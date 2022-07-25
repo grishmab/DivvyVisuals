@@ -1,0 +1,219 @@
+---
+title: "Data Storytelling"
+author: "Grishma Bhattarai"
+date: "4/22/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+# Divvy
+## Exploratory Data Analysis
+
+```{r}
+# Import the data and look at the first six rows
+df <- read.csv(file = 'divvy_trip_history_201909-202108.csv')
+head(df)
+```
+### Over what period of time does the provided Divvy data cover?
+```{r}
+range(df$date)
+```
+Divvy data covers time period from 2019-09-01 to 2021-08-31.
+
+### Considering only rides that started in 2021, which 5 stations are most used for ride starts? Please include the count of rides for each of these top stations in your results.
+```{r}
+library('tidyr')
+library('dplyr')
+```
+
+```{r}
+df %>% 
+  filter(year == 2021)%>%
+  count(start_station_name)%>%
+  arrange(desc(n))
+```
+Top 5 stations most used for start ride:
+1. NA (363123)
+2. Streeter Dr & Grand Ave (61536)
+3. Michigan Ave & Oak St (32968)
+4. Millennium Park (29994)
+5. Wells St & Concord Ln (29218)
+
+
+### What about trip ends? Please include the count of rides for each of these top stations in your results.
+```{r}
+df %>% 
+  filter(year == 2021)%>%
+  count(end_station_name)%>%
+  arrange(desc(n))
+```
+Top 5 stations most used for ride ends:
+1. NA- No Station Name (386126)
+2. Streeter Dr & Grand Ave (61953)
+3. Michigan Ave & Oak St (33340)
+4. Millennium Park (30525)
+5. Wells St & Concord Ln (29496)
+
+### What are the Top 5 trip start stations for members and top 5 trip start stations for casual riders?
+```{r}
+df %>% 
+  filter(year == 2021)%>%
+  group_by(member_casual)%>%
+  count(start_station_name)%>%
+  arrange(desc(n))
+```
+The top 5 trip start stations for members are: 
+1. NA
+2. Clark St & Elm St
+3. Wells St & Concord Ln
+4. Kingsbury St & Kinzie St
+5. Wells St & Elm St
+Similarly, the top 5 trip start stations for casual riders are:
+1. NA
+2. Streeter Dr & Grand Ave
+3. Millennium Park
+4. Michigan Ave & Oak St
+5. Lake Shore Dr & Monroe St
+
+### What was the mean ride duration in 2020? What was the median ride duration in 2020? 
+
+```{r}
+library(lubridate)
+df$started_at <- as.POSIXct(df$started_at) 
+df$ended_at <- as.POSIXct(df$ended_at) 
+```
+
+```{r}
+head(df)
+```
+
+```{r}
+df$interval <- difftime(df$ended_at, df$started_at, units='mins')
+```
+
+```{r}
+df %>% 
+  filter(year == 2020)%>%
+  summarise(mean=mean(interval))
+```
+```{r}
+df %>% 
+  filter(year == 2020)%>%
+  summarise(median=median(interval))
+```
+
+
+### What was the mean and median ride duration so far in 2021? 
+```{r}
+df %>% 
+  filter(year == 2021)%>%
+  summarise(mean2=mean(interval))
+```
+
+```{r}
+df %>% 
+  filter(year == 2021)%>%
+  summarise(median2=median(interval))
+```
+
+
+### How many rides occurred in July 2021? 
+
+```{r}
+df %>% 
+  filter(year == 2021, month == 7)%>%
+  nrow
+```
+
+### How many rides occurred in January 2021?
+```{r}
+df %>% 
+  filter(year == 2021, month == 1)%>%
+  nrow
+```
+
+```{r}
+df$weekday <- wday(df$date, label=TRUE)
+```
+
+```{r}
+library(ggplot2)
+```
+
+```{r}
+df %>%
+  group_by(weekday, member_casual, year)%>%
+  summarise(cnt=n())%>%
+  ggplot(aes(fill=member_casual, y=cnt, x=weekday)) + 
+  geom_bar(position="dodge", stat="identity") +
+  facet_wrap(~year) + 
+  theme_minimal() + scale_fill_manual(values = c("grey", "sky blue"), labels = c("Casual", "Member")) +
+  scale_y_continuous(labels = scales::label_number()) +
+  labs(title = "We Love the Weekend and So Do Divvy Riders",
+       subtitle = "Demand for Divvy bikes fluctuates depending on the day of the week– the closer 
+       the weekend, the higher the demand.",
+       y = "Total Number of Rides",
+       x = "Day of the Week",
+       fill = 'Membership Status') + 
+  theme(plot.subtitle = element_text(size = 8))
+```
+
+
+
+```{r}
+df %>%
+  mutate(date = ymd(date)) %>%
+  ggplot(aes(x = date),fig(15,4)) +
+  annotate("rect", xmin = ymd("2020-06-21"), xmax = ymd("2020-09-22"), ymin = -Inf, ymax = Inf, 
+          fill="orange2", alpha=0.15) +
+  annotate("rect", xmin = ymd("2019-09-01"), xmax = ymd("2019-09-22"), ymin = -Inf, ymax = Inf, 
+          fill="orange2", alpha=0.15) +
+    annotate("rect", xmin = ymd("2021-06-01"), xmax = ymd("2021-09-22"), ymin = -Inf, ymax = Inf, 
+          fill="orange2", alpha=0.15) +
+  annotate("rect", xmin = ymd("2020-12-21"), xmax = ymd("2021-03-15"), ymin = -Inf, ymax = Inf, 
+          fill="light blue", alpha=0.18) +
+  annotate("rect", xmin = ymd("2019-12-21"), xmax = ymd("2020-03-15"), ymin = -Inf, ymax = Inf, 
+          fill="light blue", alpha=0.18) +
+  geom_freqpoly(aes(color = member_casual), binwidth = 30, size=0.75) +
+  scale_y_continuous(labels = scales::label_number()) + theme_classic()+
+  scale_color_manual(values = c("gray35", "deepskyblue"), labels = c("Casual", "Member")) +
+  labs(title = "Grim Weather = Grim Divvy Demand",
+       subtitle = "Demand for Divvy bikes is seasonal– it fluctuates depending on whether it is summer or winter.",
+       y = "Total Number of Rides",
+       x = "Date",
+       color = 'Membership Status') + 
+  theme(plot.subtitle = element_text(size = 8))
+```
+
+
+
+
+```{r}
+
+df %>%
+  mutate(date = ymd(date)) %>%
+  group_by(date)%>%
+  summarise(cnt=n())%>%
+  ggplot(aes(x = date, y=cnt),fig(15,4)) +
+  geom_point(color='gray35') +
+  stat_smooth(colour = 'deepskyblue') +
+  geom_vline(xintercept = ymd("2020-03-15"), linetype = "dashed") +
+  geom_vline(xintercept = ymd("2020-07-24"), linetype = "dashed") +
+  geom_vline(xintercept = ymd("2021-01-19"), linetype = "dashed") +
+  geom_vline(xintercept = ymd("2021-05-18"), linetype = "dashed") +
+  scale_y_continuous(labels = scales::label_number()) + theme_classic() +
+  labs(title = "Covid and Cycling",
+       subtitle = "Demand for Divvy bikes fluctuates depending on the pandemic restrictions.",
+       y = "Total Number of Rides",
+       x = "Date") +
+  geom_label(x=ymd("2020-03-15"),y=13000,label="Onset of Pandemic", size=2) +
+  geom_label(x=ymd("2020-07-24"),y=32000,label="Gradual Resumption", size=2) +
+  geom_label(x=ymd("2021-01-19"),y=11000,label="Stay-at-Home \n Advisory Re-Issued", size=2)+
+  geom_label(x=ymd("2021-05-18"),y=14000,label="Bridge Phase", size=2)+ 
+  theme(plot.subtitle = element_text(size = 8))
+
+```
+
+
